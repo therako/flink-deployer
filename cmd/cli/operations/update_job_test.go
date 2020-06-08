@@ -1,13 +1,16 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
 
-	"github.com/ing-bank/flink-deployer/cmd/cli/flink"
+	"github.com/bsm/bfs"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/therako/flink-deployer/cmd/cli/flink"
 )
 
 /*
@@ -282,8 +285,14 @@ func TestUpdateJobShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *
 
 func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
 	filesystem := afero.NewMemMapFs()
-	filesystem.Mkdir("/data/flink/", 0755)
-	afero.WriteFile(filesystem, "/data/flink/savepoint-683b3f-59401d30cfc4", []byte("file a"), 644)
+	fs := bfs.NewInMem()
+	f1, _ := fs.Create(context.Background(), "savepoint-683b3f-59401d30cfc4/_metadata", nil)
+	defer f1.Discard()
+	f1.Write([]byte("file a"))
+	f1.Commit()
+	bfs.Register("inmem", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+		return fs, nil
+	})
 
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
@@ -320,7 +329,7 @@ func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
 	err := operator.Update(UpdateJob{
 		JobNameBase:   "WordCountStateful v1.0",
 		LocalFilename: "../testdata/sample.jar",
-		SavepointDir:  "/data/flink",
+		SavepointDir:  "inmem://",
 	})
 
 	assert.Nil(t, err)

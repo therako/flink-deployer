@@ -8,10 +8,13 @@ import (
 	"strconv"
 	"time"
 
+	// Register local fs and s3 schemas to bfs
+	_ "github.com/bsm/bfs/bfsfs"
+	_ "github.com/bsm/bfs/bfss3"
 	"github.com/hashicorp/go-retryablehttp"
-	"github.com/ing-bank/flink-deployer/cmd/cli/flink"
-	"github.com/ing-bank/flink-deployer/cmd/cli/operations"
 	"github.com/spf13/afero"
+	"github.com/therako/flink-deployer/cmd/cli/flink"
+	"github.com/therako/flink-deployer/cmd/cli/operations"
 	"github.com/urfave/cli"
 )
 

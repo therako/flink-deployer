@@ -1,40 +1,53 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"strings"
+	"time"
 
-	"github.com/spf13/afero"
+	"github.com/bsm/bfs"
+)
+
+const (
+	defaultFSPrefix   = "file://"
+	flinkMetafilePath = "/_metadata"
 )
 
 func (o RealOperator) retrieveLatestSavepoint(dir string) (string, error) {
-	if strings.HasSuffix(dir, "/") {
-		dir = strings.TrimSuffix(dir, "/")
+	if !strings.Contains(dir, "://") {
+		dir = defaultFSPrefix + dir
 	}
-
-	files, err := afero.ReadDir(o.Filesystem, dir)
+	fs, err := bfs.Connect(context.Background(), dir)
 	if err != nil {
 		return "", err
 	}
 
-	if len(files) == 0 {
-		return "", errors.New("No savepoints present in directory: " + dir)
+	if strings.HasSuffix(dir, "/") {
+		dir = strings.TrimSuffix(dir, "/")
 	}
 
+	filesIterator, err := fs.Glob(context.Background(), "*"+flinkMetafilePath)
+	if err != nil {
+		return "", err
+	}
+	defer filesIterator.Close()
+
 	var newestFile string
-	var newestTime int64
-	for _, f := range files {
-		filePath := dir + "/" + f.Name()
-		fi, err := o.Filesystem.Stat(filePath)
-		if err != nil {
-			return "", err
-		}
-		currTime := fi.ModTime().Unix()
-		if currTime > newestTime {
+	var newestTime time.Time
+	for filesIterator.Next() {
+		filePath := filesIterator.Name()
+		currTime := filesIterator.ModTime()
+		if currTime.After(newestTime) {
 			newestTime = currTime
 			newestFile = filePath
 		}
 	}
 
+	if newestFile == "" {
+		return "", errors.New("No savepoints present in directory: " + strings.TrimPrefix(dir, defaultFSPrefix))
+	}
+
+	newestFile = strings.TrimPrefix(dir, defaultFSPrefix) + "/" + strings.TrimSuffix(newestFile, flinkMetafilePath)
 	return newestFile, nil
 }
