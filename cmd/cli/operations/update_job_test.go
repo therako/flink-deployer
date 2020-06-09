@@ -1,13 +1,15 @@
 package operations
 
 import (
+	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"testing"
 
-	"github.com/ing-bank/flink-deployer/cmd/cli/flink"
-	"github.com/spf13/afero"
+	"github.com/bsm/bfs"
 	"github.com/stretchr/testify/assert"
+	"github.com/therako/flink-deployer/cmd/cli/flink"
 )
 
 /*
@@ -26,7 +28,7 @@ func TestFilterRunningJobsShouldReturnAnEmptySliceIfNoJobsAreRunning(t *testing.
 
 	res := operator.filterRunningJobsByName(
 		[]flink.Job{
-			flink.Job{
+			{
 				Status: "STOPPED",
 			},
 		},
@@ -40,11 +42,11 @@ func TestFilterRunningJobsShouldReturnTheRunningJobs(t *testing.T) {
 
 	res := operator.filterRunningJobsByName(
 		[]flink.Job{
-			flink.Job{
+			{
 				Status: "STOPPED",
 				Name:   "test",
 			},
-			flink.Job{
+			{
 				Status: "RUNNING",
 				Name:   "test",
 			},
@@ -60,15 +62,15 @@ func TestFilterRunningJobsShouldReturnTheRunningJobsMatchingTheJobBaseName(t *te
 
 	res := operator.filterRunningJobsByName(
 		[]flink.Job{
-			flink.Job{
+			{
 				Status: "STOPPED",
 				Name:   "jobA v1.0",
 			},
-			flink.Job{
+			{
 				Status: "RUNNING",
 				Name:   "JobB",
 			},
-			flink.Job{
+			{
 				Status: "RUNNING",
 				Name:   "jobA v1.1",
 			},
@@ -173,7 +175,7 @@ func TestUpdateJobShouldReturnAnErrorWhenRetrievingTheJobsFails(t *testing.T) {
 func TestUpdateJobShouldReturnAnErrorWhenTheSavepointCannotBeCreated(t *testing.T) {
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
-		flink.Job{
+		{
 			ID:     "Job-A",
 			Name:   "WordCountStateful v1.0",
 			Status: "RUNNING",
@@ -236,12 +238,9 @@ func TestUpdateJobShouldReturnAnErrorWhenTheJobCannotBeCanceled(t *testing.T) {
 }
 
 func TestUpdateJobShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *testing.T) {
-	filesystem := afero.NewMemMapFs()
-	filesystem.Mkdir("/data/flink/", 0755)
-
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
-		flink.Job{
+		{
 			ID:     "Job-A",
 			Name:   "WordCountStateful v1.0",
 			Status: "RUNNING",
@@ -264,7 +263,6 @@ func TestUpdateJobShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *
 	mockedRunJarError = nil
 
 	operator := RealOperator{
-		Filesystem: filesystem,
 		FlinkRestAPI: TestFlinkRestClient{
 			BaseURL: "http://localhost",
 			Client:  &http.Client{},
@@ -281,13 +279,18 @@ func TestUpdateJobShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *
 }
 
 func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
-	filesystem := afero.NewMemMapFs()
-	filesystem.Mkdir("/data/flink/", 0755)
-	afero.WriteFile(filesystem, "/data/flink/savepoint-683b3f-59401d30cfc4", []byte("file a"), 644)
+	fs := bfs.NewInMem()
+	f1, _ := fs.Create(context.Background(), "savepoint-683b3f-59401d30cfc4/_metadata", nil)
+	defer f1.Discard()
+	f1.Write([]byte("file a"))
+	f1.Commit()
+	bfs.Register("inmem", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
+		return fs, nil
+	})
 
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
-		flink.Job{
+		{
 			ID:     "Job-A",
 			Name:   "WordCountStateful v1.0",
 			Status: "RUNNING",
@@ -310,7 +313,6 @@ func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
 	mockedRunJarError = nil
 
 	operator := RealOperator{
-		Filesystem: filesystem,
 		FlinkRestAPI: TestFlinkRestClient{
 			BaseURL: "http://localhost",
 			Client:  &http.Client{},
@@ -320,7 +322,7 @@ func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
 	err := operator.Update(UpdateJob{
 		JobNameBase:   "WordCountStateful v1.0",
 		LocalFilename: "../testdata/sample.jar",
-		SavepointDir:  "/data/flink",
+		SavepointDir:  "inmem://",
 	})
 
 	assert.Nil(t, err)
@@ -391,12 +393,12 @@ func TestUpdateJobShouldFallbackToDeployWhenNoRunningJobsAreFound(t *testing.T) 
 func TestUpdateJobShouldReturnAnErrorWhenMultipleRunningJobsAreFound(t *testing.T) {
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
-		flink.Job{
+		{
 			ID:     "Job-A",
 			Name:   "WordCountStateful v1.0",
 			Status: "RUNNING",
 		},
-		flink.Job{
+		{
 			ID:     "Job-B",
 			Name:   "WordCountStateful v1.0",
 			Status: "RUNNING",

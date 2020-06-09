@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ing-bank/flink-deployer/cmd/cli/flink"
 	"github.com/stretchr/testify/assert"
+	"github.com/therako/flink-deployer/cmd/cli/flink"
 	"github.com/urfave/cli"
 )
 
@@ -47,7 +47,7 @@ func TestListActionShouldReturnAnErrorWhenTheAPIFails(t *testing.T) {
 
 func TestListActionShouldReturnNilWhenTheAPISucceeds(t *testing.T) {
 	mockedRetrieveJobsResponse = []flink.Job{
-		flink.Job{
+		{
 			ID:     "1",
 			Name:   "Job A",
 			Status: "RUNNING",
