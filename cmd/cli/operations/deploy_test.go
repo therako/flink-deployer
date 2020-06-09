@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/spf13/afero"
 	"github.com/therako/flink-deployer/cmd/cli/flink"
 
 	"github.com/stretchr/testify/assert"
@@ -62,9 +61,6 @@ func TestDeployShouldReturnAnErrorWhenTheJarUploadFails(t *testing.T) {
 }
 
 func TestDeployShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *testing.T) {
-	filesystem := afero.NewMemMapFs()
-	filesystem.Mkdir("/data/flink/", 0755)
-
 	mockedUploadJarResponse = flink.UploadJarResponse{
 		Filename: "/data/flink/sample.jar",
 		Status:   "success",
@@ -72,7 +68,6 @@ func TestDeployShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *tes
 	mockedUploadJarError = nil
 
 	operator := RealOperator{
-		Filesystem: filesystem,
 		FlinkRestAPI: TestFlinkRestClient{
 			BaseURL: "http://localhost",
 			Client:  &http.Client{},

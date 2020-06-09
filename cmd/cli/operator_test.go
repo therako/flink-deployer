@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/spf13/afero"
 	"github.com/therako/flink-deployer/cmd/cli/flink"
 	"github.com/therako/flink-deployer/cmd/cli/operations"
 )
@@ -13,7 +12,6 @@ var mockedRetrieveJobsResponse []flink.Job
 var mockedRetrieveJobsError error
 
 type TestOperator struct {
-	Filesystem   afero.Fs
 	FlinkRestAPI flink.FlinkRestAPI
 }
 

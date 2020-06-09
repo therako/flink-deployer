@@ -10,7 +10,6 @@ import (
 	"github.com/bsm/bfs/bfsfs"
 	_ "github.com/bsm/bfs/bfsfs"
 	_ "github.com/bsm/bfs/bfss3"
-	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,9 +21,7 @@ func TestRetrieveLatestSavepointShouldReturnAnErrorIfItCannotReadFromDir(t *test
 	defer os.RemoveAll(dir)
 	assert.NoError(t, err)
 
-	operator := RealOperator{
-		Filesystem: afero.NewMemMapFs(),
-	}
+	operator := RealOperator{}
 	savepointPath := dir + "/savepoints"
 
 	files, err := operator.retrieveLatestSavepoint(savepointPath)
@@ -34,9 +31,7 @@ func TestRetrieveLatestSavepointShouldReturnAnErrorIfItCannotReadFromDir(t *test
 }
 
 func TestRetrieveLatestSavepointShouldReturnAnErrorIfFSSchemaNotSupported(t *testing.T) {
-	operator := RealOperator{
-		Filesystem: afero.NewMemMapFs(),
-	}
+	operator := RealOperator{}
 
 	files, err := operator.retrieveLatestSavepoint("tmpfs://")
 
@@ -60,9 +55,7 @@ func TestRetrieveLatestSavepointShouldReturnAnTheNewestFile(t *testing.T) {
 	f2.Write([]byte("file b"))
 	f2.Commit()
 
-	operator := RealOperator{
-		Filesystem: afero.NewMemMapFs(),
-	}
+	operator := RealOperator{}
 
 	files, err := operator.retrieveLatestSavepoint(dir)
 
@@ -85,9 +78,7 @@ func TestRetrieveLatestSavepointShouldRemoveTheTrailingSlashFromTheSavepointDire
 	defer f2.Discard()
 	f2.Write([]byte("file b"))
 	f2.Commit()
-	operator := RealOperator{
-		Filesystem: afero.NewMemMapFs(),
-	}
+	operator := RealOperator{}
 
 	files, err := operator.retrieveLatestSavepoint(dir + "/")
 
