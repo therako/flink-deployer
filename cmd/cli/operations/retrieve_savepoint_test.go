@@ -17,7 +17,7 @@ import (
  * RetrieveLatestSavepoint
  */
 func TestRetrieveLatestSavepointShouldReturnAnErrorIfItCannotReadFromDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestRetrieveLatestSavepointShouldReturnAnErrorIfItCannotReadFromDir")
+	dir, err := ioutil.TempDir("", t.Name())
 	defer os.RemoveAll(dir)
 	assert.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestRetrieveLatestSavepointShouldReturnAnErrorIfFSSchemaNotSupported(t *tes
 }
 
 func TestRetrieveLatestSavepointShouldReturnAnTheNewestFile(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestRetrieveLatestSavepointShouldReturnAnTheNewestFile")
+	dir, err := ioutil.TempDir("", t.Name())
 	defer os.RemoveAll(dir)
 	assert.NoError(t, err)
 
@@ -64,7 +64,7 @@ func TestRetrieveLatestSavepointShouldReturnAnTheNewestFile(t *testing.T) {
 }
 
 func TestRetrieveLatestSavepointShouldRemoveTheTrailingSlashFromTheSavepointDirectory(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestRetrieveLatestSavepointShouldRemoveTheTrailingSlashFromTheSavepointDirectory")
+	dir, err := ioutil.TempDir("", t.Name())
 	defer os.RemoveAll(dir)
 	assert.NoError(t, err)
 

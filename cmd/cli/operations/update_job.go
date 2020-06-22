@@ -127,17 +127,17 @@ func (o RealOperator) Update(u UpdateJob) error {
 		if err != nil {
 			return fmt.Errorf("job \"%v\" failed to cancel due to: %v", job.ID, err)
 		}
-
-		latestSavepoint, err := o.retrieveLatestSavepoint(u.SavepointDir)
-		if err != nil {
-			return fmt.Errorf("retrieving the latest savepoint failed: %v", err)
-		}
-
-		if len(latestSavepoint) != 0 {
-			deploy.SavepointPath = latestSavepoint
-		}
 	default:
 		return fmt.Errorf("job name with base \"%v\" has %v instances running. Aborting update", u.JobNameBase, len(runningJobs))
+	}
+
+	latestSavepoint, err := o.retrieveLatestSavepoint(u.SavepointDir)
+	if err != nil {
+		return fmt.Errorf("retrieving the latest savepoint failed: %v", err)
+	}
+
+	if len(latestSavepoint) != 0 {
+		deploy.SavepointPath = latestSavepoint
 	}
 
 	err = o.Deploy(deploy)

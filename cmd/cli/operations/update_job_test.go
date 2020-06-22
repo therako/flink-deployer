@@ -3,11 +3,12 @@ package operations
 import (
 	"context"
 	"errors"
+	"io/ioutil"
 	"net/http"
-	"net/url"
+	"os"
 	"testing"
 
-	"github.com/bsm/bfs"
+	"github.com/bsm/bfs/bfsfs"
 	"github.com/stretchr/testify/assert"
 	"github.com/therako/flink-deployer/cmd/cli/flink"
 )
@@ -116,7 +117,7 @@ func TestMonitorSavepointCreationShouldReturnNilWhenTheSavepointIsCreated(t *tes
 
 	err := operator.monitorSavepointCreation("job-id", "request-id", 1)
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 /*
@@ -279,14 +280,15 @@ func TestUpdateJobShouldReturnAnErrorWhenTheLatestSavepointCannotBeRetrieved(t *
 }
 
 func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
-	fs := bfs.NewInMem()
+	dir, err := ioutil.TempDir("", t.Name())
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	fs, err := bfsfs.New(dir, "")
 	f1, _ := fs.Create(context.Background(), "savepoint-683b3f-59401d30cfc4/_metadata", nil)
 	defer f1.Discard()
 	f1.Write([]byte("file a"))
 	f1.Commit()
-	bfs.Register("inmem", func(_ context.Context, u *url.URL) (bfs.Bucket, error) {
-		return fs, nil
-	})
 
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{
@@ -319,13 +321,13 @@ func TestUpdateJobShouldReturnNilWhenTheUpdateSucceeds(t *testing.T) {
 		},
 	}
 
-	err := operator.Update(UpdateJob{
+	err = operator.Update(UpdateJob{
 		JobNameBase:   "WordCountStateful v1.0",
 		LocalFilename: "../testdata/sample.jar",
-		SavepointDir:  "inmem://",
+		SavepointDir:  dir,
 	})
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestUpdateJobShouldReturnAnErrorWhenNoRunningJobsAreFound(t *testing.T) {
@@ -369,7 +371,17 @@ func TestUpdateJobShouldReturnErrorWhenNoRunningJobsAreFoundAndFallbackToDeployI
 	assert.EqualError(t, err, "no instance running for job name base \"WordCountStateful\". Aborting update")
 }
 
-func TestUpdateJobShouldFallbackToDeployWhenNoRunningJobsAreFound(t *testing.T) {
+func TestUpdateJobShouldFallbackToDeployFromSavepointWhenNoRunningJobsAreFound(t *testing.T) {
+	dir, err := ioutil.TempDir("", t.Name())
+	defer os.RemoveAll(dir)
+	assert.NoError(t, err)
+
+	fs, err := bfsfs.New(dir, "")
+	f1, _ := fs.Create(context.Background(), "savepoint-683b3f-59401d30cfc4/_metadata", nil)
+	defer f1.Discard()
+	f1.Write([]byte("file a"))
+	f1.Commit()
+
 	mockedRetrieveJobsError = nil
 	mockedRetrieveJobsResponse = []flink.Job{}
 
@@ -380,14 +392,14 @@ func TestUpdateJobShouldFallbackToDeployWhenNoRunningJobsAreFound(t *testing.T) 
 		},
 	}
 
-	err := operator.Update(UpdateJob{
+	err = operator.Update(UpdateJob{
 		JobNameBase:      "WordCountStateful",
 		LocalFilename:    "testdata/sample.jar",
-		SavepointDir:     "/data/flink",
+		SavepointDir:     dir,
 		FallbackToDeploy: true,
 	})
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 }
 
 func TestUpdateJobShouldReturnAnErrorWhenMultipleRunningJobsAreFound(t *testing.T) {
