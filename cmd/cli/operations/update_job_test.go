@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/bsm/bfs/bfsfs"
 	"github.com/stretchr/testify/assert"
@@ -95,7 +96,7 @@ func TestMonitorSavepointCreationShouldReturnAnErrorWhenTheSavepointFailsToBeCre
 		},
 	}
 
-	err := operator.monitorSavepointCreation("job-id", "request-id", 1)
+	err := operator.monitorSavepointCreation("job-id", "request-id", 1*time.Second)
 
 	assert.EqualError(t, err, "failed to create savepoint for job \"job-id\" within 1 seconds")
 }

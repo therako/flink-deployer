@@ -156,6 +156,8 @@ func UpdateAction(c *cli.Context) error {
 		return cli.NewExitError("unspecified flag 'savepoint-dir'", -1)
 	}
 
+	update.SavepointCreationTimeout = time.Duration(c.Uint("savepoint-creation-timeout")) * time.Second
+
 	update.AllowNonRestoredState = c.Bool("allow-non-restored-state")
 
 	update.FallbackToDeploy = c.Bool("fallback-to-deploy")
@@ -326,6 +328,11 @@ func main() {
 				cli.StringFlag{
 					Name:  "savepoint-dir, sd",
 					Usage: "The path to the directory that contains the savepoints",
+				},
+				cli.StringFlag{
+					Name:  "savepoint-creation-timeout, sct",
+					Usage: "Timeout on creating a new savepoint in seconds (Default: 60)",
+					Value: "60",
 				},
 				cli.BoolFlag{
 					Name:  "allow-non-restored-state, anrs",

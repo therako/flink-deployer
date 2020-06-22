@@ -14,16 +14,17 @@ import (
 // UpdateJob represents the configuration used for
 // updating a job on the Flink cluster
 type UpdateJob struct {
-	JobNameBase           string
-	LocalFilename         string
-	RemoteFilename        string
-	APIToken              string
-	EntryClass            string
-	Parallelism           int
-	ProgramArgs           []string
-	SavepointDir          string
-	AllowNonRestoredState bool
-	FallbackToDeploy      bool
+	JobNameBase              string
+	LocalFilename            string
+	RemoteFilename           string
+	APIToken                 string
+	EntryClass               string
+	Parallelism              int
+	ProgramArgs              []string
+	SavepointDir             string
+	SavepointCreationTimeout time.Duration
+	AllowNonRestoredState    bool
+	FallbackToDeploy         bool
 }
 
 func (o RealOperator) filterRunningJobsByName(jobs []flink.Job, jobNameBase string) (ret []flink.Job) {
@@ -35,7 +36,9 @@ func (o RealOperator) filterRunningJobsByName(jobs []flink.Job, jobNameBase stri
 	return
 }
 
-func (o RealOperator) monitorSavepointCreation(jobID string, requestID string, maxElapsedTime int) error {
+func (o RealOperator) monitorSavepointCreation(
+	jobID string, requestID string, savepointCreationTimeout time.Duration,
+) error {
 	op := func() error {
 		log.Println("checking status of savepoint creation")
 		res, err := o.FlinkRestAPI.MonitorSavepointCreation(jobID, requestID)
@@ -62,7 +65,7 @@ func (o RealOperator) monitorSavepointCreation(jobID string, requestID string, m
 		RandomizationFactor: backoff.DefaultRandomizationFactor,
 		Multiplier:          backoff.DefaultMultiplier,
 		MaxInterval:         backoff.DefaultMaxInterval,
-		MaxElapsedTime:      time.Duration(maxElapsedTime) * time.Second,
+		MaxElapsedTime:      savepointCreationTimeout,
 		Clock:               backoff.SystemClock,
 	}
 	err := backoff.Retry(op, b)
@@ -118,7 +121,7 @@ func (o RealOperator) Update(u UpdateJob) error {
 			return fmt.Errorf("failed to create savepoint for job %v due to error: %v", job.ID, err)
 		}
 
-		err = o.monitorSavepointCreation(job.ID, savepointResponse.RequestID, 60)
+		err = o.monitorSavepointCreation(job.ID, savepointResponse.RequestID, u.SavepointCreationTimeout)
 		if err != nil {
 			return err
 		}
