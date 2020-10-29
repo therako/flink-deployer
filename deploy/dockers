@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+DOCKER_REPO="therako/flink-deployer"
+
+###
+
+function get-app-version() {
+    local version=$(go run cmd/cli/main.go -v | cut -d ' ' -f 4)
+
+    echo ${version}
+}
+
+function build-and-push-docker-for() {
+    local os="$1"
+    local tag="$(get-app-version)-${os}"
+    
+    docker build \
+        -t ${DOCKER_REPO}:${tag} \
+        -f deploy/Dockerfile \
+        --build-arg BASE_OS=${os} \
+        .
+
+    docker push ${DOCKER_REPO}:${tag}
+}
+
+function echo-failure() {
+    echo -e "\033[0;31m${@}\033[0m" >&2
+}
+
+function echo-error() {
+    echo-failure $@
+}
+
+function if-error() {
+    local exit_code="$1"
+    shift
+
+    if [ "${exit_code}" -ne 0 ] ; then
+        echo-failure "$@"
+        exit ${exit_code}
+    fi
+}
+
+###
+
+[ "${DEBUG}" = 'true' ] && set -x
+
+build-and-push-docker-for alpine3.12
+if-error $? "Failed to build and push docker image for alpine3.12"
+
+build-and-push-docker-for buster
+if-error $? "Failed to build and push docker image for buster"
+
+# Tag alpine image as latest
+docker tag ${DOCKER_REPO}:"$(get-app-version)-alpine3.12" ${DOCKER_REPO}:latest && \
+    docker push ${DOCKER_REPO}:latest
+if-error $? "Failed to tag and push latest docker image"
